@@ -12,28 +12,38 @@ const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:3000",
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST", "PUT", "DELETE"]
   }
 });
 
 // MongoDB connection
-const MONGODB_URI = "mongodb+srv://farazabdullah267:SjgRgW3SlAAa05Rl@project.ifut3ay.mongodb.net/";
-const JWT_SECRET = "your-secret-key";
+const MONGODB_URI = "mongodb+srv://farazabdullah267:SjgRgW3SlAAa05Rl@project.ifut3ay.mongodb.net/chatapp";
+const JWT_SECRET = "your-secret-key-12345";
 
 let db;
+let isConnected = false;
 
-MongoClient.connect(MONGODB_URI)
-  .then(client => {
-    console.log('Connected to MongoDB');
+// Connect to MongoDB
+async function connectToMongoDB() {
+  try {
+    const client = await MongoClient.connect(MONGODB_URI);
+    console.log('✅ Connected to MongoDB');
     db = client.db('chatapp');
-  })
-  .catch(error => {
-    console.error('MongoDB connection error:', error);
+    isConnected = true;
+  } catch (error) {
+    console.error('❌ MongoDB connection error:', error);
     process.exit(1);
-  });
+  }
+}
+
+// Initialize MongoDB connection
+await connectToMongoDB();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:3000",
+  credentials: true
+}));
 app.use(express.json());
 
 // Joi validation schemas
@@ -76,11 +86,16 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Routes
+// Test route
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Server is running!', dbConnected: isConnected });
+});
 
 // User Signup
 app.post('/api/signup', async (req, res) => {
   try {
+    console.log('Signup request received:', req.body);
+    
     const { error, value } = userSignupSchema.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.details[0].message });
@@ -110,15 +125,17 @@ app.post('/api/signup', async (req, res) => {
     
     // Generate token
     const token = jwt.sign(
-      { userId: result.insertedId, email, name },
+      { userId: result.insertedId.toString(), email, name },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
 
+    console.log('User created successfully:', result.insertedId);
+
     res.status(201).json({
       message: 'User created successfully',
       token,
-      user: { id: result.insertedId, name, email }
+      user: { id: result.insertedId.toString(), name, email }
     });
   } catch (error) {
     console.error('Signup error:', error);
@@ -129,6 +146,8 @@ app.post('/api/signup', async (req, res) => {
 // User Login
 app.post('/api/login', async (req, res) => {
   try {
+    console.log('Login request received:', req.body);
+    
     const { error, value } = userLoginSchema.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.details[0].message });
@@ -150,15 +169,17 @@ app.post('/api/login', async (req, res) => {
 
     // Generate token
     const token = jwt.sign(
-      { userId: user._id, email: user.email, name: user.name },
+      { userId: user._id.toString(), email: user.email, name: user.name },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
 
+    console.log('User logged in successfully:', user._id);
+
     res.json({
       message: 'Login successful',
       token,
-      user: { id: user._id, name: user.name, email: user.email }
+      user: { id: user._id.toString(), name: user.name, email: user.email }
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -173,6 +194,7 @@ app.get('/api/users', authenticateToken, async (req, res) => {
       .find({}, { projection: { password: 0 } })
       .toArray();
     
+    console.log('Users fetched:', users.length);
     res.json(users);
   } catch (error) {
     console.error('Get users error:', error);
@@ -352,11 +374,11 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', async () => {
     console.log('User disconnected:', socket.id);
-    // You might want to update user status to offline here
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`📱 Client should run on http://localhost:3000`);
 });
