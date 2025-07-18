@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
+import { updateProfile } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 
-const ProfileModal = ({ user, token, onClose, onUserUpdate, onDeleteAccount }) => {
+const ProfileModal = ({ user, onClose, onUserUpdate, onDeleteAccount }) => {
   const [formData, setFormData] = useState({
     name: user.name,
     email: user.email
@@ -23,41 +26,30 @@ const ProfileModal = ({ user, token, onClose, onUserUpdate, onDeleteAccount }) =
     setSuccess('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData),
+      // Update Firebase Auth profile
+      await updateProfile(auth.currentUser, {
+        displayName: formData.name
+      });
+      
+      // Update Firestore user document
+      await updateDoc(doc(db, 'users', user.id), {
+        name: formData.name,
+        email: formData.email,
+        updatedAt: new Date()
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess('Profile updated successfully!');
-        onUserUpdate({
-          ...user,
-          name: data.user.name,
-          email: data.user.email
-        });
-        
-        // Update localStorage
-        const updatedUser = {
-          ...user,
-          name: data.user.name,
-          email: data.user.email
-        };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        
-        setTimeout(() => {
-          onClose();
-        }, 1500);
-      } else {
-        setError(data.message);
-      }
+      setSuccess('Profile updated successfully!');
+      onUserUpdate({
+        ...user,
+        name: formData.name,
+        email: formData.email
+      });
+      
+      setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (error) {
-      setError('Network error. Please try again.');
+      setError(error.message);
     } finally {
       setLoading(false);
     }

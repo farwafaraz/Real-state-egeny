@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
 
 const Login = ({ onLogin, onSwitchToSignup }) => {
   const [formData, setFormData] = useState({
@@ -21,23 +23,18 @@ const Login = ({ onLogin, onSwitchToSignup }) => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        onLogin(data.user, data.token);
-      } else {
-        setError(data.message);
-      }
+      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      const firebaseUser = userCredential.user;
+      
+      const userData = {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+        email: firebaseUser.email
+      };
+      
+      onLogin(userData);
     } catch (error) {
-      setError('Network error. Please try again.');
+      setError(error.message);
     } finally {
       setLoading(false);
     }

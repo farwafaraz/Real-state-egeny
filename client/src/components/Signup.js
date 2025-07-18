@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 
 const Signup = ({ onSignup, onSwitchToLogin }) => {
   const [formData, setFormData] = useState({
@@ -22,23 +25,37 @@ const Signup = ({ onSignup, onSwitchToLogin }) => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+      // Create user with email and password
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        formData.email, 
+        formData.password
+      );
+      
+      const firebaseUser = userCredential.user;
+      
+      // Update the user's display name
+      await updateProfile(firebaseUser, {
+        displayName: formData.name
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        onSignup(data.user, data.token);
-      } else {
-        setError(data.message);
-      }
+      
+      // Create user document in Firestore
+      await setDoc(doc(db, 'users', firebaseUser.uid), {
+        name: formData.name,
+        email: formData.email,
+        createdAt: new Date(),
+        isOnline: false
+      });
+      
+      const userData = {
+        id: firebaseUser.uid,
+        name: formData.name,
+        email: firebaseUser.email
+      };
+      
+      onSignup(userData);
     } catch (error) {
-      setError('Network error. Please try again.');
+      setError(error.message);
     } finally {
       setLoading(false);
     }

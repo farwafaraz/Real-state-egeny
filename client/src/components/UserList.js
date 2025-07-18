@@ -10,10 +10,10 @@ const UserList = ({ users, selectedUser, onUserSelect }) => {
         <div className="space-y-1">
           {users.map((user) => (
             <button
-              key={user._id}
+              key={user.id}
               onClick={() => onUserSelect(user)}
               className={`w-full text-left p-3 rounded-lg transition-colors ${
-                selectedUser && selectedUser._id === user._id
+                selectedUser && selectedUser.id === user.id
                   ? 'bg-primary-50 border-primary-200 border'
                   : 'hover:bg-gray-50'
               }`}

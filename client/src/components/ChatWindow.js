@@ -21,7 +21,8 @@ const ChatWindow = ({ selectedUser, messages, currentUser, onSendMessage }) => {
   };
 
   const formatTime = (date) => {
-    return new Date(date).toLocaleTimeString([], { 
+    const timestamp = date?.toDate ? date.toDate() : new Date(date);
+    return timestamp.toLocaleTimeString([], { 
       hour: '2-digit', 
       minute: '2-digit' 
     });
@@ -57,7 +58,7 @@ const ChatWindow = ({ selectedUser, messages, currentUser, onSendMessage }) => {
         ) : (
           messages.map((message, index) => (
             <div
-              key={message._id || index}
+              key={message.id || index}
               className={`flex ${isMyMessage(message) ? 'justify-end' : 'justify-start'}`}
             >
               <div
